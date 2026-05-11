@@ -2,6 +2,7 @@
 
 :- use_module('logic/board').
 :- use_module('logic/operators').
+:- use_module('logic/search_stats').
 :- use_module('io/printer').
 :- use_module('algorithms/iterative_deepening').
 :- use_module('algorithms/a_star').
@@ -23,14 +24,28 @@ solve(Puzzle) :-
 % Example: ?- solve([[...]], a_star).
 solve(Puzzle, iterative_deepening) :-
     write('Solving with Iterative Deepening...'), nl,
-    iterative_deepening(Puzzle, Solution),
+    reset_stats,
+    get_time(Start),
+    depth_first_iterative_deepening(Puzzle, Path),
+    get_time(End),
+    Elapsed is End - Start,
+    final_board(Path, Solution),
     write('Solution found:'), nl,
-    print_board(Solution).
+    print_board(Solution),
+    print_stats(Elapsed).
 
 solve(Puzzle, a_star) :-
     write('Solving with A*...'), nl,
-    a_star(Puzzle, Solution),
+    reset_stats,
+    get_time(Start),
+    bestfirst(Puzzle, Path),
+    get_time(End),
+    Elapsed is End - Start,
+    final_board(Path, Solution),
     write('Solution found:'), nl,
-    print_board(Solution).
+    print_board(Solution),
+    print_stats(Elapsed).
 
+% The search algorithms return a path with the goal state at the head.
+final_board([Solution|_], Solution).
 
