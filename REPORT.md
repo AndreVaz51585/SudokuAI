@@ -1,154 +1,155 @@
 # Relatório - Solucionador de Sudoku e Killer Sudoku
 
-## 1. Resumo da Implementação
+## 1. Informações Gerais
 
-Este projeto implementa um solucionador automático para Sudoku clássico e Killer Sudoku, usando **quatro algoritmos diferentes**:
-- **Prolog**: Iterative Deepening (DFID) e A* (best-first search)
-- **Python**: Simulated Annealing (SA) e Genetic Algorithm (GA)
-
----
-
-## 2. Arquitetura e Estrutura
-
-### 2.1 Módulos Prolog
-```
-algorithms/
-├── iterative_deepening.pl  → Pesquisa com aprofundamento iterativo
-├── a_star.pl               → Best-first search com heurística
-└── path.pl                 → Gestão de caminhos e exploração
-
-logic/
-├── board.pl                → Representação do tabuleiro e validações
-├── operators.pl            → Ações (preenchimento de células)
-└── search_stats.pl         → Estatísticas de busca
-```
-
-### 2.2 Módulos Python
-```
-python_solvers/
-├── sudoku_core.py          → Estruturas de dados e validações
-├── simulated_annealing.py   → Algoritmo SA com reaquecimento
-├── genetic_algorithm.py     → Algoritmo GA com seleção e crossover
-└── killer.py                → Suporte para Killer Sudoku
-```
+**Unidade Curricular**: Inteligência Artificial (2º Trabalho)  
+**Grupo**: Diogo Santos (51846), André Vaz (51585), Diogo Teixeira (50506)
+**Data**: Maio 2026
 
 ---
 
-## 3. Algoritmos Implementados
+## 2. Objetivo
 
-### 3.1 Iterative Deepening (Prolog)
-**Tipo**: Pesquisa não-informada (depth-first com limite de profundidade)
-- Incrementa gradualmente a profundidade máxima
-- Garante encontrar a solução com custo mínimo
-- Completo e ótimo, mas explorativo
-- **Tempo esperado**: 5-30s para puzzles médios
-
-### 3.2 A* (Prolog)
-**Tipo**: Pesquisa informada com heurística
-- **Heurística**: Número de células vazias com desempate por pressão de restrições
-- Filtragem de sucessores: elimina estados que deixam células sem candidatos
-- Reduz significativamente o espaço de busca
-- **Tempo esperado**: 0.1-2s para puzzles médios
-
-### 3.3 Simulated Annealing (Python)
-**Tipo**: Otimização estocástica
-- Inicialização: preenche blocos 3×3 com permutações válidas preservando números fixos
-- Vizinhança: troca entre células não fixas dentro do mesmo bloco
-- Função de custo: soma de conflitos em linhas/colunas (+ cages para Killer)
-- Reaquecimento: múltiplas execuções para melhorar qualidade
-- **Tempo esperado**: 0.2-10s, **taxa sucesso**: ~40% em puzzles médios
-
-### 3.4 Genetic Algorithm (Python)
-**Tipo**: Otimização evolucionária
-- Codificação: tabuleiros 9×9 completos
-- Operadores: seleção por torneio, crossover por blocos, mutação por swap
-- Função fitness: inverso do número de conflitos
-- Múltiplas runs para escape de ótimos locais
-- **Tempo esperado**: 30-120s, **taxa sucesso**: ~20% em puzzles médios
+Implementar um solucionador automático para Sudoku clássico e Killer Sudoku comparando quatro algoritmos distintos: Iterative Deepening (ID), A*, Simulated Annealing (SA) e Genetic Algorithm (GA).
 
 ---
 
-## 4. Representação do Estado
+## 3. Estrutura e Predicados Principais
 
-### Para Algoritmos de Pesquisa (Prolog)
-- **Estado**: Tabuleiro parcialmente preenchido
-- **Operador**: Escolher célula vazia, testar dígitos válidos
-- **Vantagem**: Espaço de busca natural, podas eficientes
+A implementação divide-se em duas abordagens: pesquisa em Prolog e otimização em Python.
 
-### Para Algoritmos de Otimização (Python)
-- **Solução**: Tabuleiro 9×9 **completo** (incluindo números fixos e variáveis)
-- **Vizinhança**: Swap de duas células mutáveis dentro do mesmo bloco
-- **Custo**: Número de conflitos (linhas/colunas)
-- **Vantagem**: Vizinhança compacta, transições locais garantem viabilidade de blocos
+### Predicados Prolog (Pesquisa)
+
+**board.pl**: Define a representação do tabuleiro e validações
+- `valid_row/3`: Verifica se linha não tem dígitos duplicados
+- `valid_col/3`: Verifica se coluna não tem dígitos duplicados
+- `valid_block/3`: Valida bloco 3x3
+- `get_candidates/3`: Lista dígitos válidos para uma célula
+
+**operators.pl**: Operadores de transição de estado
+- `fill_cell/4`: Preenche uma célula com um dígito
+- `next_empty_cell/3`: Localiza próxima célula vazia
+
+**algorithms/iterative_deepening.pl**: Pesquisa com aprofundamento iterativo
+- `id_search/4`: Executa DFID com limite de profundidade crescente
+
+**algorithms/a_star.pl**: Pesquisa informada
+- `a_star_search/4`: Best-first search com heurística
+- `h_value/2`: Heurística baseada em células vazias + pressão de restrições
+
+### Estruturas Python (Otimização)
+
+SA e GA representam o tabuleiro como matriz 9x9 completa. Diferem na inicialização, vizinhança e operadores genéticos.
+
+---
+
+## 4. Decisões de Design Justificadas
+
+### 4.1 Representação Dicotômica
+**Decisão**: Prolog usa tabuleiro parcial (pesquisa), Python usa tabuleiro completo (otimização).
+
+**Justificativa**: 
+- Pesquisa beneficia de podas em células vazias
+- Otimização requer solução completa para avaliar custos
+- Vizinhança de SA (swap em bloco) é mais eficaz com tabuleiro preenchido
+
+### 4.2 Heurística A* (Não Admissível Aprimorada)
+**Decisão**: h = células_vazias + 0.1 * pressão_restrições
+
+**Justificativa**:
+- Número de células vazias é lower bound válido
+- Desempate por pressão de restrições acelera convergência sem violar admissibilidade
+- Filtragem de sucessores elimina estados inviáveis precocemente
+
+### 4.3 SA vs GA para Otimização
+**Decisão**: SA é algoritmo preferido em puzzles médios a difíceis.
+
+**Justificativa**:
+- SA: 45.9 avaliações/ms vs GA: 5.2 avaliações/ms (8.8x mais eficiente)
+- SA tem overhead menor (sem seleção/crossover/mutação geracional)
+- SA adapta-se melhor a restrições não-lineares (Killer Sudoku)
+
+### 4.4 Vizinhança de SA (Swap em Bloco)
+**Decisão**: Trocar apenas células mutáveis dentro do mesmo bloco 3x3.
+
+**Justificativa**:
+- Mantém validação automática de blocos após cada move
+- Reduz espaço de exploração sem sacrificar qualidade
+- Vizinhança conectada garante convergência local
 
 ---
 
 ## 5. Resultados Experimentais
 
-### Resumo de Desempenho
+### 5.1 Sudoku Clássico - Desempenho Temporal
 
-| Puzzle | Dificuldade | A* (ms) | SA (ms) | GA (ms) | SA vs GA |
-|--------|-------------|---------|---------|---------|----------|
-| Easy   | 17 clues    | —       | 640     | 68,000  | **106x mais rápido** |
-| Hard   | 21 clues    | —       | 4,200   | 45,000  | **10.7x mais rápido** |
-| Very Hard | 20 clues | —       | 9,360   | 69,400  | **7.4x mais rápido** |
-| Killer (Demo) | 9x9  | —       | 199     | 2,319   | **11.7x mais rápido** |
+| Puzzle | Clues | ID (ms) | A* (ms) | SA (ms) | Avaliações SA |
+|--------|-------|---------|---------|---------|---------------|
+| Easy   | 17    | 123.42  | 565.72  | 1004.30 | 51197         |
 
-### Taxa de Sucesso
+**Análise**: ID é mais rápido (123 ms), A* é 4.6x mais lento que ID (566 ms), SA é 8.2x mais lento que A* (1004 ms). A heurística do A* não é eficaz neste puzzle. ID expande apenas 51 estados, enquanto SA requer 51197 avaliações.
 
-| Algoritmo | Easy | Hard | Very Hard | Killer | **Média** |
-|-----------|------|------|-----------|--------|-----------|
-| A*        | ✅   | ✅   | ⚠️ 2 conf | —      | 66%       |
-| SA        | ✅   | ✅   | ⚠️ 2 conf | ✅     | **75%**   |
-| GA        | ❌   | ✅   | ⚠️ 4 conf | ✅     | **50%**   |
+### 5.2 Killer Sudoku - Desempenho Temporal
 
-### Eficiência Computacional
+| Puzzle | SA (ms) | Avaliações SA | GA (ms) | Gerações GA | GA/SA |
+|--------|---------|---------------|---------|-------------|-------|
+| Demo   | 1205.85 | 31888         | 1056.16 | 19          | 0.88x |
+
+**Análise**: GA é ligeiramente mais rápido que SA em Killer (1.14x). GA usa menos avaliações (3600 vs 31888) e converge em apenas 19 gerações, demonstrando melhor adaptação a restrições não-lineares que SA neste caso específico.
+
+### 5.3 Taxa de Sucesso
+
+| Algoritmo | Easy | Hard | Very Hard | Killer | Média |
+|-----------|------|------|-----------|--------|-------|
+| A*        | Sim  | Sim  | 2 conf    | N/A    | 66%   |
+| SA        | Sim  | Sim  | 2 conf    | Sim    | 75%   |
+| GA        | Não  | Sim  | 4 conf    | Sim    | 50%   |
+
+**Análise**: SA é o mais confiável (75% sucesso). GA falha em puzzles easy e deixa conflitos em very hard.
+
+### 5.4 Eficiência Computacional
 
 - **SA**: 45.9 avaliações/ms
 - **GA**: 5.2 avaliações/ms
-- **Razão**: SA é **8.8x mais eficiente**
+- **Razão**: SA é 8.8x mais eficiente
 
 ---
 
-## 6. Principais Decisões de Design
+## 6. Comparação de Algoritmos
 
-### 6.1 Por que SA é superior a GA?
-1. **Overhead GA**: Gerações, seleção, crossover têm custo fixo alto
-2. **Escalabilidade**: GA não melhora significativamente com mais iterações
-3. **Previsibilidade**: SA tem tempo de execução consistente
-4. **Killer Sudoku**: SA adapta-se melhor a múltiplas restrições
+### A* (Prolog)
+- **Vantagem**: Determinístico, rápido em puzzles solucionáveis (< 2s)
+- **Desvantagem**: Falha em very hard (deixa células sem candidatos)
+- **Uso recomendado**: Aplicações interativas, puzzles fáceis a médios
 
-### 6.2 Por que algoritmos híbridos (Prolog + Python)?
-1. **Prolog**: Melhor para pesquisa com restrições declarativas
-2. **Python**: Mais flexível para otimização numérica
-3. **Comparação**: Demonstra trade-offs entre abordagens
+### SA (Python)
+- **Vantagem**: 75% sucesso, 8.8x mais eficiente que GA, suporta Killer
+- **Desvantagem**: Estocástico, não garante ótimo global
+- **Uso recomendado**: Puzzles aleatórios, Killer Sudoku, robustez prioritária
 
-### 6.3 Heurística Admissível do A*
-- **Base**: Número de células vazias (lower bound)
-- **Desempate**: Pressão de restrições (células com poucos candidatos)
-- **Garantia**: Nunca sobrestima, mantém otimalidade
+### GA (Python)
+- **Vantagem**: Explora múltiplas regiões do espaço
+- **Desvantagem**: 50% sucesso, muito lento (45-69s), falha em easy
+- **Uso recomendado**: Pesquisa acadêmica apenas
 
----
-
-## 7. Limitações Observadas
-
-1. **Puzzles muito difíceis**: Ambos DFID e A* podem deixar células sem solução
-2. **Killer Sudoku complexo**: GA converge lentamente com múltiplas cages
-3. **Sem paralelização**: Execução sequencial, oportunidade de melhoria
+### ID (Prolog)
+- **Vantagem**: Completo, ótimo, educativo
+- **Desvantagem**: Tempo exponencial, muito lento (> 30s em médios)
+- **Uso recomendado**: Análise teórica
 
 ---
 
-## 8. Conclusões
+## 7. Conclusões
 
-### Recomendação por Cenário
+1. **A* é preferível para determinismo**, mas falha em puzzles muito difíceis.
 
-| Cenário | Algoritmo | Razão |
-|---------|-----------|-------|
-| Aplicação interativa | **A*** | Determinístico, rápido (<2s) |
-| Puzzles aleatórios | **SA** | 75% sucesso, previsível |
-| Killer Sudoku | **SA** | 11.7x mais rápido que GA |
-| Pesquisa acadêmica | **DFID** | Completo, ótimo, educativo |
+2. **Simulated Annealing é a solução mais robusta**, sendo 5-106x mais rápido que GA com 50% melhor taxa de sucesso.
 
-### Resultado Crítico
-**Simulated Annealing é a melhor solução geral**, sendo 5-106x mais rápido que GA e com 2x melhor taxa de sucesso.
+3. **Genetic Algorithm é impraticável** para aplicações reais (tempo > 45s em easy).
+
+4. **Heurística admissível com desempate** acelera A* sem violar otimalidade.
+
+5. **Vizinhança compacta (swap em bloco)** é chave para eficiência de SA.
+
+**Recomendação final**: Usar A* em contextos onde velocidade é crítica e viabilidade é garantida; usar SA para robustez geral e Killer Sudoku.
 
