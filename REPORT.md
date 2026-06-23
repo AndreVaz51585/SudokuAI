@@ -62,12 +62,13 @@ SA e GA representam o tabuleiro como matriz 9x9 completa. Diferem na inicializa�
 - Filtragem de sucessores elimina estados inviáveis precocemente
 
 ### 4.3 SA vs GA para Otimização
-**Decisão**: SA é algoritmo preferido em puzzles médios a difíceis.
+**Decisão**: SA e GA foram incluídos como técnicas de otimização estocástica para comparação com os algoritmos de pesquisa.
 
 **Justificativa**:
-- SA: 45.9 avaliações/ms vs GA: 5.2 avaliações/ms (8.8x mais eficiente)
-- SA tem overhead menor (sem seleção/crossover/mutação geracional)
-- SA adapta-se melhor a restrições não-lineares (Killer Sudoku)
+- SA tem overhead menor, porque trabalha com uma solução corrente e um vizinho de cada vez
+- GA explora múltiplas regiões do espaço através de uma população de soluções
+- Nos testes medidos, ambos resolvem o puzzle easy, mas o SA é substancialmente mais rápido
+- Em puzzles mais difíceis, nenhum dos dois garante solução dentro dos limites definidos
 
 ### 4.4 Vizinhança de SA (Swap em Bloco)
 **Decisão**: Trocar apenas células mutáveis dentro do mesmo bloco 3x3.
@@ -83,73 +84,126 @@ SA e GA representam o tabuleiro como matriz 9x9 completa. Diferem na inicializa�
 
 ### 5.1 Sudoku Clássico - Desempenho Temporal
 
-| Puzzle | Clues | ID (ms) | A* (ms) | SA (ms) | Avaliações SA |
-|--------|-------|---------|---------|---------|---------------|
-| Easy   | 17    | 123.42  | 565.72  | 1004.30 | 51197         |
+Os resultados Python foram obtidos pela CLI com `--seed 1` e os parâmetros por
+defeito de cada algoritmo. Os resultados Prolog foram obtidos no SWI-Prolog.
 
-**Análise**: ID é mais rápido (123 ms), A* é 4.6x mais lento que ID (566 ms), SA é 8.2x mais lento que A* (1004 ms). A heurística do A* não é eficaz neste puzzle. ID expande apenas 51 estados, enquanto SA requer 51197 avaliações.
+| Puzzle | Algoritmo | Resolvido | Custo final | Avaliações/Estados | Restarts/Gerações | Tempo (ms) |
+|--------|-----------|-----------|-------------|--------------------|-------------------|------------|
+| Easy | ID | Sim | - | 51 estados expandidos / 51 gerados | - | 74.12 |
+| Easy | A* | Sim | - | 51 estados expandidos / 51 gerados | - | 259.76 |
+| Easy | SA | Sim | 0 | 49 926 avaliações | 1 restart | 734.03 |
+| Easy | GA | Sim | 0 | 83 700 avaliações | 464 gerações | 11 055.89 |
+| Hard Norvig | ID | Sim | - | 10 101 estados expandidos / 10 101 gerados | - | 13 760.29 |
+| Hard Norvig | A* | Sim | - | 17 136 estados expandidos / 17 136 gerados | - | 119 344.39 |
+| Hard Norvig | SA | Não | 2 | 5 000 040 avaliações | 20 restarts | 73 002.27 |
+| Hard Norvig | GA | Não | 2 | 2 160 720 avaliações | 12 000 gerações | 286 106.70 |
+| Very Hard / AI Escargot | ID | Sim | - | 217 estados expandidos / 217 gerados | - | 262.07 |
+| Minimal 17 clues | ID | Sim | - | 4 835 estados expandidos / 4 835 gerados | - | 6 835.54 |
+
+**Análise**: No puzzle `easy`, todos os algoritmos testados encontram a solução.
+O ID é o mais rápido neste caso, com 74.12 ms, seguido do A* com 259.76 ms. O SA
+também encontra custo 0, mas precisa de 49 926 avaliações. O GA resolve o mesmo
+puzzle, mas demora 11 055.89 ms, cerca de 15.1x mais tempo do que o SA, porque
+precisa de avaliar uma população durante 464 gerações.
+
+No puzzle `hard_norvig`, os dois algoritmos Prolog encontram solução. Neste
+caso, o ID é mais rápido, demorando 13 760.29 ms e expandindo 10 101 estados,
+enquanto o A* demora 119 344.39 ms e expande 17 136 estados. O SA e o GA
+terminam ambos com custo 2, não encontrando uma solução válida dentro dos
+limites configurados. O SA percorre os 20 restarts definidos por defeito e
+termina em 73 002.27 ms. O GA executa as 12 000 gerações resultantes das 4 runs
+de 3 000 gerações e demora 286 106.70 ms, cerca de 3.9x mais tempo que o SA.
+Isto mostra a principal limitação da abordagem por otimização: mesmo reduzindo
+bastante os conflitos, os algoritmos podem ficar presos perto de uma solução sem
+atingir custo 0.
+
+Nos puzzles `very_hard_ai_escargot` e `minimal_17_clues`, foram medidos
+resultados adicionais com ID. O ID resolveu o `very_hard_ai_escargot` em
+262.07 ms, expandindo apenas 217 estados, e resolveu o `minimal_17_clues` em
+6 835.54 ms, expandindo 4 835 estados. Estes resultados mostram que a escolha da
+célula com menos candidatos reduz muito o espaço de pesquisa nestes exemplos.
 
 ### 5.2 Killer Sudoku - Desempenho Temporal
 
-| Puzzle | SA (ms) | Avaliações SA | GA (ms) | Gerações GA | GA/SA |
-|--------|---------|---------------|---------|-------------|-------|
-| Demo   | 1205.85 | 31888         | 1056.16 | 19          | 0.88x |
+Os resultados seguintes foram obtidos com `--seed 3`.
 
-**Análise**: GA é ligeiramente mais rápido que SA em Killer (1.14x). GA usa menos avaliações (3600 vs 31888) e converge em apenas 19 gerações, demonstrando melhor adaptação a restrições não-lineares que SA neste caso específico.
+| Puzzle | Algoritmo | Resolvido | Custo final | Avaliações | Restarts/Gerações | Tempo (ms) |
+|--------|-----------|-----------|-------------|------------|-------------------|------------|
+| Demo | SA | Sim | 0 | 31 888 | 1 restart | 750.17 |
+| Demo | GA | Sim | 0 | 3 600 | 19 gerações | 758.31 |
+
+**Análise**: No Killer Sudoku `demo`, tanto SA como GA encontram a solução
+correta com custo 0. Os tempos são praticamente equivalentes: SA demora
+750.17 ms e GA demora 758.31 ms. O GA precisa de muito menos avaliações diretas
+do que o SA, mas cada geração envolve operações adicionais de seleção, crossover
+e mutação, o que faz com que o tempo final fique muito próximo.
 
 ### 5.3 Taxa de Sucesso
 
-| Algoritmo | Easy | Hard | Very Hard | Killer | Média |
-|-----------|------|------|-----------|--------|-------|
-| A*        | Sim  | Sim  | 2 conf    | N/A    | 66%   |
-| SA        | Sim  | Sim  | 2 conf    | Sim    | 75%   |
-| GA        | Não  | Sim  | 4 conf    | Sim    | 50%   |
+| Algoritmo | Easy | Hard Norvig | Very Hard | Minimal 17 | Killer Demo |
+|-----------|------|-------------|-----------|------------|-------------|
+| ID        | Sim  | Sim         | Sim       | Sim        | N/A         |
+| A*        | Sim  | Sim         | Por medir | Por medir  | N/A         |
+| SA        | Sim  | Não, custo 2 | Por medir | Por medir | Sim         |
+| GA        | Sim  | Não, custo 2 | Por medir | Por medir | Sim         |
 
-**Análise**: SA é o mais confiável (75% sucesso). GA falha em puzzles easy e deixa conflitos em very hard.
+**Análise**: Com os dados atualmente medidos, todos os algoritmos testados
+resolvem o puzzle `easy`. No `hard_norvig`, ID e A* encontram solução, enquanto
+SA e GA aproximam-se da solução mas terminam com custo 2, ou seja, ainda existem
+conflitos no tabuleiro final. O ID também resolveu os puzzles
+`very_hard_ai_escargot` e `minimal_17_clues`. No Killer Sudoku `demo`, os dois
+algoritmos Python resolvem o puzzle.
 
 ### 5.4 Eficiência Computacional
 
-- **SA**: 45.9 avaliações/ms
-- **GA**: 5.2 avaliações/ms
-- **Razão**: SA é 8.8x mais eficiente
+- **SA no easy**: 49 926 avaliações / 734.03 ms = 68.02 avaliações/ms
+- **SA no hard_norvig**: 5 000 040 avaliações / 73 002.27 ms = 68.49 avaliações/ms
+- **GA no easy**: 83 700 avaliações / 11 055.89 ms = 7.57 avaliações/ms
+- **GA no hard_norvig**: 2 160 720 avaliações / 286 106.70 ms = 7.55 avaliações/ms
+- **Razão no easy**: SA executa cerca de 9.0x mais avaliações por ms do que GA
+- **Razão no hard_norvig**: SA executa cerca de 9.1x mais avaliações por ms do que GA
+
+Apesar de ambos seguirem a estrutura dos algoritmos do professor, o GA tem mais
+overhead por trabalhar com uma população completa, seleção, crossover e mutação
+em cada geração. O SA trabalha apenas com uma solução corrente e um vizinho de
+cada vez, o que explica a maior taxa de avaliações por milissegundo.
 
 ---
 
 ## 6. Comparação de Algoritmos
 
 ### A* (Prolog)
-- **Vantagem**: Determinístico, rápido em puzzles solucionáveis (< 2s)
-- **Desvantagem**: Falha em very hard (deixa células sem candidatos)
+- **Vantagem**: Determinístico e completo nos casos medidos
+- **Desvantagem**: Pode demorar bastante em puzzles difíceis; no hard_norvig foi mais lento que ID
 - **Uso recomendado**: Aplicações interativas, puzzles fáceis a médios
 
 ### SA (Python)
-- **Vantagem**: 75% sucesso, 8.8x mais eficiente que GA, suporta Killer
-- **Desvantagem**: Estocástico, não garante ótimo global
-- **Uso recomendado**: Puzzles aleatórios, Killer Sudoku, robustez prioritária
+- **Vantagem**: Baixo overhead por iteração; resolve o puzzle easy e o Killer demo
+- **Desvantagem**: Estocástico, não garante ótimo global; no hard_norvig ficou em custo 2
+- **Uso recomendado**: Demonstração de otimização local/estocástica e comparação com pesquisa
 
 ### GA (Python)
-- **Vantagem**: Explora múltiplas regiões do espaço
-- **Desvantagem**: 50% sucesso, muito lento (45-69s), falha em easy
-- **Uso recomendado**: Pesquisa acadêmica apenas
+- **Vantagem**: Explora múltiplas regiões do espaço através de uma população; resolve o easy e o Killer demo
+- **Desvantagem**: Muito mais lento que SA; no hard_norvig também ficou em custo 2
+- **Uso recomendado**: Demonstração da adaptação de seleção, crossover e mutação ao Sudoku
 
 ### ID (Prolog)
-- **Vantagem**: Completo, ótimo, educativo
-- **Desvantagem**: Tempo exponencial, muito lento (> 30s em médios)
+- **Vantagem**: Muito rápido nos puzzles Prolog medidos, incluindo hard_norvig, very_hard_ai_escargot e minimal_17_clues
+- **Desvantagem**: Pode crescer exponencialmente em puzzles mais difíceis
 - **Uso recomendado**: Análise teórica
 
 ---
 
 ## 7. Conclusões
 
-1. **A* é preferível para determinismo**, mas falha em puzzles muito difíceis.
+1. **Os algoritmos Prolog são preferíveis quando se pretende determinismo**, porque fazem pesquisa construtiva e encontraram solução nos casos medidos; neste conjunto de testes, o ID foi o mais forte entre os algoritmos de pesquisa.
 
-2. **Simulated Annealing é a solução mais robusta**, sendo 5-106x mais rápido que GA com 50% melhor taxa de sucesso.
+2. **Simulated Annealing tem menor overhead que GA**, executando cerca de 9.0x mais avaliações por ms no puzzle easy.
 
-3. **Genetic Algorithm é impraticável** para aplicações reais (tempo > 45s em easy).
+3. **Genetic Algorithm resolve o puzzle easy**, mas demora cerca de 15.1x mais tempo que SA no mesmo puzzle; no hard_norvig também termina com custo 2.
 
 4. **Heurística admissível com desempate** acelera A* sem violar otimalidade.
 
 5. **Vizinhança compacta (swap em bloco)** é chave para eficiência de SA.
 
-**Recomendação final**: Usar A* em contextos onde velocidade é crítica e viabilidade é garantida; usar SA para robustez geral e Killer Sudoku.
-
+**Recomendação final**: Usar A* em contextos onde velocidade e determinismo são críticos; usar SA e GA como comparação de técnicas de otimização estocástica adaptadas ao Sudoku, tendo em conta que não garantem solução em puzzles difíceis dentro dos limites definidos.
